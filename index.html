@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollen</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            min-height: 100vh;
+            padding: 24px;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+        .container { max-width: 720px; margin: 0 auto; }
+        .poll {
+            background: #fff;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 18px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: slideIn 0.3s ease;
+            position: relative;
+        }
+        .poll:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); }
+        .poll-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+        .user-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #6e6e73;
+            font-size: 0.95em;
+        }
+        .user-circle {
+            width: 36px;
+            height: 36px;
+            background: #007aff;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            margin-right: 12px;
+            font-weight: 500;
+        }
+        .option {
+            padding: 14px 20px;
+            margin: 8px 0;
+            background: #f5f5f7;
+            border-radius: 12px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+        .option:hover { background: #e8ecef; }
+        .option:active { transform: scale(0.98); }
+        .vote-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: #007aff;
+            opacity: 0.2;
+            transition: width 0.4s ease;
+        }
+        .option-text {
+            position: relative;
+            z-index: 1;
+            font-size: 1.1em;
+            font-weight: 400;
+        }
+        .action-btn {
+            position: fixed;
+            top: 24px;
+            background: #000;
+            color: #fff;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s ease, background 0.2s ease;
+            z-index: 10;
+        }
+        .action-btn:hover { transform: scale(1.05); background: #333; }
+        .create-btn { right: 24px; }
+        .profile-btn { right: 80px; }
+        .stats-btn { right: 136px; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+            z-index: 100;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 24px;
+            border-radius: 20px;
+            width: 360px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 101;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        input, button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            font-size: 1em;
+            transition: background 0.2s ease;
+        }
+        input:focus { background: #e8ecef; outline: none; }
+        button { background: #007aff; color: #fff; cursor: pointer; }
+        button:hover { background: #005bb5; }
+        .skip-btn {
+            background: none;
+            border: none;
+            color: #007aff;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 12px;
+            transition: color 0.2s ease;
+        }
+        .skip-btn:hover { color: #005bb5; }
+        .loader {
+            border: 4px solid #e8ecef;
+            border-top: 4px solid #007aff;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        .tag {
+            background: #e8ecef;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            margin-left: 10px;
+            color: #6e6e73;
+        }
+        .timer {
+            font-size: 0.9em;
+            color: #6e6e73;
+            margin-top: 12px;
+        }
+        .no-polls {
+            text-align: center;
+            color: #6e6e73;
+            font-size: 1.2em;
+            margin-top: 24px;
+            font-weight: 500;
+        }
+        .poll-stats { font-size: 0.9em; color: #6e6e73; margin-top: 8px; }
+        .delete-btn { position: absolute; top: 12px; right: 12px; color: #ff3b30; background: none; border: none; cursor: pointer; }
+        .share-btn { margin-left: 10px; color: #34c759; background: none; border: none; cursor: pointer; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="container" id="pollsContainer"></div>
+    <button class="action-btn create-btn" onclick="showCreatePoll()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+    </button>
+    <button class="action-btn profile-btn" onclick="showProfile()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+    </button>
+    <button class="action-btn stats-btn" onclick="showStats()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+    </button>
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Sign In or Sign Up</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="loginOrSignup()">Submit</button>
+            <button onclick="closeModal()" style="background: #f5f5f7; color: #1d1d1f;">Cancel</button>
+        </div>
+    </div>
+    <div class="modal" id="createPollModal">
+        <div class="modal-content">
+            <h2>Create a Poll</h2>
+            <input type="text" id="pollQuestion" placeholder="Your Question">
+            <input type="text" id="option1" placeholder="Option 1">
+            <input type="text" id="option2" placeholder="Option 2">
+            <input type="text" id="option3" placeholder="Option 3 (optional)">
+            <input type="text" id="option4" placeholder="Option 4 (optional)">
+            <input type="text" id="pollTags" placeholder="Tags (e.g., fun, school)">
+            <input type="number" id="pollTimer" placeholder="Expiration (hours, optional)">
+            <button onclick="submitPoll()">Create Poll</button>
+            <button onclick="closeModal()" style="background: #f5f5f7; color: #1d1d1f;">Cancel</button>
+        </div>
+    </div>
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <h2>Your Profile</h2>
+            <p id="userNameDisplay"></p>
+            <input type="text" id="newUserName" placeholder="Change Username">
+            <button onclick="updateUserName()">Update Name</button>
+            <button onclick="logout()">Logout</button>
+            <button onclick="closeModal()" style="background: #f5f5f7; color: #1d1d1f;">Close</button>
+        </div>
+    </div>
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <h2>Your Stats</h2>
+            <p id="statsDisplay"></p>
+            <button onclick="closeModal()" style="background: #f5f5f7; color: #1d1d1f;">Close</button>
+        </div>
+    </div>
+    <div class="loader" id="loader"></div>
+
+    <!-- Firebase SDK (v8.10.0) with Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAGCBoD6Cn7lnTD8R-sQHBTE5IdFVq0hBA",
+            authDomain: "nglhonestly.firebaseapp.com",
+            databaseURL: "https://nglhonestly-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nglhonestly",
+            storageBucket: "nglhonestly.firebasestorage.app",
+            messagingSenderId: "1002591277776",
+            appId: "1:1002591277776:web:9f71be9c14642a188744d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const rtdb = firebase.database();
+        let currentUser = null;
+
+        // Toast utility
+        const showToast = (message, type = 'info') => {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 20px; background: ${type === 'error' ? '#ff3b30' : '#000'}; color: #fff; border-radius: 12px; z-index: 1000; font-size: 0.95em; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        };
+
+        // Auth state listener
+        firebase.auth().onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                updateProfileDisplay();
+                showToast('Signed in successfully!');
+            } else {
+                document.getElementById('pollsContainer').innerHTML = '<div class="no-polls">Sign in to view or create polls.</div>';
+            }
+            loadRandomPoll(true);
+        });
+
+        // Load a random poll with filtering
+        function loadRandomPoll(isInitial = false) {
+            const container = document.getElementById('pollsContainer');
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+
+            rtdb.ref('polls').once('value')
+                .then(snapshot => {
+                    loader.style.display = 'none';
+                    const polls = snapshot.val();
+
+                    if (!polls) {
+                        container.innerHTML = '<div class="no-polls">No polls yet! Create one to get started.</div>';
+                        return;
+                    }
+
+                    const pollIds = Object.keys(polls).filter(id => !polls[id].expires || polls[id].expires > Date.now());
+                    if (pollIds.length === 0) {
+                        container.innerHTML = '<div class="no-polls">No active polls available.</div>';
+                        return;
+                    }
+
+                    const viewedPolls = JSON.parse(localStorage.getItem('viewedPolls') || '[]');
+                    const votedPolls = JSON.parse(localStorage.getItem('votedPolls') || '[]');
+                    let availableIds = pollIds.filter(id => !viewedPolls.includes(id));
+
+                    // Feature 1: Filter out polls I created unless all are voted
+                    if (currentUser) {
+                        const unvotedIds = availableIds.filter(id => !votedPolls.includes(id));
+                        const othersIds = unvotedIds.filter(id => polls[id].creatorId !== currentUser.uid);
+                        availableIds = othersIds.length > 0 ? othersIds : unvotedIds; // Show mine if all others voted
+                    }
+
+                    if (availableIds.length === 0) {
+                        container.innerHTML = '<div class="no-polls">You’ve seen or voted on all polls!</div>';
+                        return;
+                    }
+
+                    const randomId = availableIds[Math.floor(Math.random() * availableIds.length)];
+                    viewedPolls.push(randomId);
+                    localStorage.setItem('viewedPolls', JSON.stringify(viewedPolls.slice(-20)));
+
+                    if (isInitial) container.innerHTML = '';
+                    renderPoll(polls[randomId], randomId);
+                    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+                })
+                .catch(err => {
+                    loader.style.display = 'none';
+                    container.innerHTML = `<div class="no-polls">Error loading polls: ${err.message}</div>`;
+                    showToast(`Error: ${err.message}`, 'error');
+                });
+        }
+
+        // Render a poll with new features
+        function renderPoll(poll, pollId) {
+            const hasVoted = localStorage.getItem(`voted_${pollId}`);
+            const container = document.getElementById('pollsContainer');
+            const pollDiv = document.createElement('div');
+            pollDiv.className = 'poll';
+
+            const userName = poll.userName || 'Unknown';
+            pollDiv.innerHTML = `
+                <div class="poll-title">${poll.question || 'Untitled Poll'}</div>
+                <div class="user-container">
+                    <div class="user-circle">${userName.charAt(0).toUpperCase()}</div>
+                    <div>${userName}${poll.tags ? `<span class="tag">${poll.tags}</span>` : ''}</div>
+                </div>
+                ${poll.expires ? `<div class="timer">Expires in ${Math.ceil((poll.expires - Date.now()) / 3600000)}h</div>` : ''}
+            `;
+
+            const optionsDiv = document.createElement('div');
+            const totalVotes = Object.values(poll.options || {}).reduce((sum, votes) => sum + votes, 0);
+
+            Object.keys(poll.options || {}).forEach(option => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                const votes = poll.options[option] || 0;
+                const percentage = totalVotes ? (votes / totalVotes) * 100 : 0;
+                optionDiv.innerHTML = `
+                    <div class="vote-bar" style="width: ${hasVoted ? percentage : 0}%;"></div>
+                    <div class="option-text">${option}${hasVoted ? ` (${votes} votes, ${percentage.toFixed(1)}%)` : ''}</div>
+                `;
+                if (!hasVoted) {
+                    optionDiv.onclick = () => vote(pollId, option, optionsDiv);
+                }
+                optionsDiv.appendChild(optionDiv);
+            });
+
+            rtdb.ref(`polls/${pollId}/options`).on('value', snapshot => {
+                if (snapshot.val()) updateVotes(snapshot.val(), optionsDiv, hasVoted || localStorage.getItem(`voted_${pollId}`));
+            });
+
+            // Feature 2: Poll stats
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'poll-stats';
+            statsDiv.textContent = `Total Votes: ${totalVotes} | Created: ${new Date(poll.createdAt).toLocaleDateString()}`;
+            pollDiv.appendChild(statsDiv);
+
+            // Feature 3: Delete poll if creator
+            if (currentUser && poll.creatorId === currentUser.uid) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deletePoll(pollId, pollDiv);
+                pollDiv.appendChild(deleteBtn);
+            }
+
+            // Feature 4: Share poll
+            const skipBtn = document.createElement('button');
+            skipBtn.className = 'skip-btn';
+            skipBtn.textContent = 'Next Poll';
+            skipBtn.onclick = () => loadRandomPoll();
+
+            const shareBtn = document.createElement('button');
+            shareBtn.className = 'share-btn';
+            shareBtn.textContent = 'Share';
+            shareBtn.onclick = () => sharePoll(pollId, poll.question);
+            pollDiv.appendChild(optionsDiv);
+            pollDiv.appendChild(skipBtn);
+            pollDiv.appendChild(shareBtn);
+            container.appendChild(pollDiv);
+        }
+
+        // Update vote display
+        function updateVotes(options, optionsDiv, hasVoted) {
+            const totalVotes = Object.values(options).reduce((sum, votes) => sum + votes, 0);
+            Array.from(optionsDiv.children).forEach(optionDiv => {
+                const optionText = optionDiv.querySelector('.option-text').textContent.split(' (')[0];
+                const votes = options[optionText] || 0;
+                const percentage = totalVotes ? (votes / totalVotes) * 100 : 0;
+                if (hasVoted) {
+                    optionDiv.querySelector('.vote-bar').style.width = `${percentage}%`;
+                    optionDiv.querySelector('.option-text').textContent = `${optionText} (${votes} votes, ${percentage.toFixed(1)}%)`;
+                    optionDiv.onclick = null;
+                }
+            });
+        }
+
+        // Immediate voting
+        function vote(pollId, selectedOption, optionsDiv) {
+            localStorage.setItem(`voted_${pollId}`, true);
+            const votedPolls = JSON.parse(localStorage.getItem('votedPolls') || '[]');
+            votedPolls.push(pollId);
+            localStorage.setItem('votedPolls', JSON.stringify(votedPolls));
+            rtdb.ref(`polls/${pollId}/options/${selectedOption}`).transaction(votes => (votes || 0) + 1)
+                .then(() => {
+                    showToast('Vote recorded!');
+                    // Feature 5: Vote streak
+                    updateVoteStreak();
+                    loadRandomPoll();
+                })
+                .catch(err => {
+                    showToast(`Failed to vote: ${err.message}`, 'error');
+                    localStorage.removeItem(`voted_${pollId}`);
+                });
+        }
+
+        // Feature 3: Delete poll
+        function deletePoll(pollId, pollDiv) {
+            if (!confirm('Delete this poll?')) return;
+            rtdb.ref(`polls/${pollId}`).remove()
+                .then(() => {
+                    pollDiv.remove();
+                    showToast('Poll deleted!');
+                    loadRandomPoll();
+                })
+                .catch(err => showToast(`Failed to delete: ${err.message}`, 'error'));
+        }
+
+        // Feature 4: Share poll
+        function sharePoll(pollId, question) {
+            const url = `${window.location.origin}?poll=${pollId}`;
+            navigator.clipboard.writeText(`${question} - Vote here: ${url}`)
+                .then(() => showToast('Poll URL copied to clipboard!'))
+                .catch(() => showToast('Failed to copy URL', 'error'));
+        }
+
+        // Feature 5: Vote streak
+        function updateVoteStreak() {
+            let streak = parseInt(localStorage.getItem('voteStreak') || '0');
+            streak++;
+            localStorage.setItem('voteStreak', streak);
+            if (streak % 5 === 0) showToast(`Nice! ${streak} votes in a row!`);
+        }
+
+        // Show create poll modal
+        function showCreatePoll() {
+            if (currentUser) document.getElementById('createPollModal').style.display = 'flex';
+            else document.getElementById('authModal').style.display = 'flex';
+        }
+
+        // Show profile modal
+        function showProfile() {
+            if (currentUser) document.getElementById('profileModal').style.display = 'flex';
+            else document.getElementById('authModal').style.display = 'flex';
+        }
+
+        // Feature 6: Stats modal
+        function showStats() {
+            if (!currentUser) {
+                showToast('Sign in to view stats.', 'error');
+                return;
+            }
+            document.getElementById('statsModal').style.display = 'flex';
+            const votedPolls = JSON.parse(localStorage.getItem('votedPolls') || '[]').length;
+            const streak = localStorage.getItem('voteStreak') || '0';
+            const createdCount = JSON.parse(localStorage.getItem('createdPolls') || '[]').length;
+            document.getElementById('statsDisplay').innerHTML = `
+                Polls Voted: ${votedPolls}<br>
+                Vote Streak: ${streak}<br>
+                Polls Created: ${createdCount}<br>
+                <!-- Feature 7: Random fun fact -->
+                Fun Fact: ${getRandomFact()}
+            `;
+        }
+
+        // Feature 7: Random fun fact
+        function getRandomFact() {
+            const facts = [
+                'Polls were invented in 1824 by Andrew Jackson.',
+                'The shortest poll ever lasted 3 seconds.',
+                'Over 80% of people enjoy voting in fun polls!',
+                'The word "poll" comes from Old English "polle" meaning head.'
+            ];
+            return facts[Math.floor(Math.random() * facts.length)];
+        }
+
+        // Close all modals
+        function closeModal() {
+            document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+        }
+
+        // Login or signup with Firestore user storage
+        function loginOrSignup() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!email || !password) {
+                showToast('Email and password required.', 'error');
+                return;
+            }
+
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .catch(() => firebase.auth().createUserWithEmailAndPassword(email, password)
+                    .then(userCredential => {
+                        const user = userCredential.user;
+                        const name = prompt('Choose your username:')?.trim();
+                        if (!name) throw new Error('Username required');
+                        return db.collection('users').doc(user.uid).set({
+                            uid: user.uid,
+                            username: name,
+                            email: user.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }))
+                .then(() => {
+                    closeModal();
+                    loadRandomPoll(true);
+                })
+                .catch(err => showToast(`Auth error: ${err.message}`, 'error'));
+        }
+
+        // Submit a new poll with Firestore username
+        function submitPoll() {
+            if (!currentUser) {
+                showToast('Please sign in to create a poll.', 'error');
+                return;
+            }
+
+            const question = document.getElementById('pollQuestion').value.trim();
+            const options = [
+                document.getElementById('option1').value.trim(),
+                document.getElementById('option2').value.trim(),
+                document.getElementById('option3').value.trim(),
+                document.getElementById('option4').value.trim()
+            ].filter(opt => opt);
+            const tags = document.getElementById('pollTags').value.trim();
+            const timer = document.getElementById('pollTimer').value.trim();
+
+            if (!question || options.length < 2) {
+                showToast('Question and at least 2 options required.', 'error');
+                return;
+            }
+
+            db.collection('users').doc(currentUser.uid).get()
+                .then(doc => {
+                    if (!doc.exists) throw new Error('User not found in Firestore');
+                    const userData = doc.data();
+                    const userName = userData.username || 'Unknown';
+                    const poll = {
+                        question,
+                        userName,
+                        options: options.reduce((acc, opt) => ({ ...acc, [opt]: 0 }), {}),
+                        tags: tags || null,
+                        expires: timer ? Date.now() + (parseInt(timer) * 3600000) : null,
+                        createdAt: Date.now(),
+                        creatorId: currentUser.uid,
+                        // Feature 8: Poll category
+                        category: tags ? tags.split(',')[0].trim() : 'General'
+                    };
+                    return rtdb.ref('polls').push(poll);
+                })
+                .then(ref => {
+                    // Feature 9: Track created polls
+                    const createdPolls = JSON.parse(localStorage.getItem('createdPolls') || '[]');
+                    createdPolls.push(ref.key);
+                    localStorage.setItem('createdPolls', JSON.stringify(createdPolls));
+                    closeModal();
+                    showToast('Poll created!');
+                    loadRandomPoll();
+                })
+                .catch(err => showToast(`Failed to create poll: ${err.message}`, 'error'));
+        }
+
+        // Update profile display from Firestore
+        function updateProfileDisplay() {
+            if (!currentUser) return;
+            db.collection('users').doc(currentUser.uid).get()
+                .then(doc => {
+                    const userData = doc.exists ? doc.data() : null;
+                    document.getElementById('userNameDisplay').textContent = userData && userData.username
+                        ? `Username: ${userData.username}`
+                        : 'Username: Not set';
+                })
+                .catch(err => showToast(`Profile error: ${err.message}`, 'error'));
+        }
+
+        // Update username in Firestore
+        function updateUserName() {
+            const newName = document.getElementById('newUserName').value.trim();
+            if (!newName) {
+                showToast('Please enter a new username.', 'error');
+                return;
+            }
+            db.collection('users').doc(currentUser.uid).update({ username: newName })
+                .then(() => {
+                    updateProfileDisplay();
+                    showToast('Username updated!');
+                })
+                .catch(err => showToast(`Update error: ${err.message}`, 'error'));
+        }
+
+        // Logout
+        function logout() {
+            firebase.auth().signOut()
+                .then(() => {
+                    closeModal();
+                    // Feature 10: Reset streak on logout
+                    localStorage.setItem('voteStreak', '0');
+                    showToast('Signed out!');
+                    loadRandomPoll(true);
+                })
+                .catch(err => showToast(`Logout error: ${err.message}`, 'error'));
+        }
+    </script>
+</body>
+</html>
