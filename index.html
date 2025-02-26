@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pollen</title>
+    <link rel="icon" type="image/png" href="https://t3.ftcdn.net/jpg/03/86/38/76/360_F_386387610_rcucpwo1rUwBZgBi90vckjiG0n0w1w3j.jpg">
     <style>
         * {
             margin: 0;
@@ -171,11 +172,65 @@
             padding: 12px 16px;
             margin: 6px 0;
             background: #f5f5f5;
+            /* Default before voting */
             border-radius: 10px;
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            transition: background 0.2s ease, transform 0.2s ease;
+            transition: background 0.3s ease, transform 0.2s ease, opacity 0.2s ease;
+            /* Smooth transitions */
+        }
+
+        .option.voted {
+            background: #000;
+            /* Black background for the selected option */
+            color: #fff;
+            /* White text for contrast */
+            transform: scale(1.02);
+            /* Slight scale up for emphasis */
+            opacity: 1;
+        }
+
+        .option:not(.voted) {
+            background: #e5e5e5;
+            /* Grey for unselected options after voting */
+            transform: scale(1);
+            /* Reset scale */
+        }
+
+        .option:hover:not(.voted) {
+            background: #e8e8e8;
+            /* Slightly darker grey on hover before voting */
+            transform: scale(1.02);
+            /* Subtle scale on hover */
+        }
+
+        .option:active:not(.voted) {
+            transform: scale(0.98);
+            /* Slight shrink on click */
+        }
+
+        /* Dark mode adjustments */
+        .dark .option {
+            background: #333;
+            /* Default in dark mode before voting */
+        }
+
+        .dark .option.voted {
+            background: #fff;
+            /* White in dark mode for selected option */
+            color: #000;
+            /* Black text for contrast */
+        }
+
+        .dark .option:not(.voted) {
+            background: #555;
+            /* Darker grey for unselected in dark mode */
+        }
+
+        .dark .option:hover:not(.voted) {
+            background: #444;
+            /* Hover effect in dark mode */
         }
 
         .option.voted {
@@ -267,7 +322,7 @@
         }
 
         button:hover {
-            
+
             transform: scale(1.02);
         }
 
@@ -990,21 +1045,21 @@
                 return availableIds;
             },
 
-            renderPoll(poll, pollId, container, isVoted = false, isMine = false) {
+            renderPoll(poll, pollId, container, isVoted = false, isMine = false, existingPollDiv = null) {
                 const hasVoted = state.votedPolls.includes(pollId);
                 const userVote = localStorage.getItem(`vote_${pollId}`);
-                const pollDiv = document.createElement('div');
-                pollDiv.className = 'poll';
+                const pollDiv = existingPollDiv || document.createElement('div');
+                if (!existingPollDiv) pollDiv.className = 'poll';
 
                 const userName = poll.userName || 'Unknown';
                 pollDiv.innerHTML = `
-                    <div class="poll-title">${poll.question || 'Untitled'}</div>
-                    <div class="user-container">
-                        <div class="user-circle">${userName.charAt(0).toUpperCase()}</div>
-                        <div>${userName}${poll.tags ? `<span class="tag">${poll.tags}</span>` : ''}</div>
-                    </div>
-                    ${poll.expires ? `<div class="timer">Expires in ${Math.ceil((poll.expires - Date.now()) / 3600000)}h</div>` : ''}
-                `;
+        <div class="poll-title">${poll.question || 'Untitled'}</div>
+        <div class="user-container">
+            <div class="user-circle">${userName.charAt(0).toUpperCase()}</div>
+            <div>${userName}${poll.tags ? `<span class="tag">${poll.tags}</span>` : ''}</div>
+        </div>
+        ${poll.expires ? `<div class="timer">Expires in ${Math.ceil((poll.expires - Date.now()) / 3600000)}h</div>` : ''}
+    `;
 
                 const optionsDiv = document.createElement('div');
                 const totalVotes = Object.values(poll.options || {}).reduce((sum, votes) => sum + votes, 0);
@@ -1012,13 +1067,13 @@
 
                 Object.keys(poll.options || {}).forEach(option => {
                     const optionDiv = document.createElement('div');
-                    optionDiv.className = `option ${userVote === option ? 'voted' : ''} ${poll.options[option] === highestVote && hasVoted ? 'highest' : ''}`;
+                    optionDiv.className = `option ${userVote === option && hasVoted ? 'voted' : ''}`;
                     const votes = poll.options[option] || 0;
                     const percentage = totalVotes ? (votes / totalVotes) * 100 : 0;
                     optionDiv.innerHTML = `
-                        <div class="vote-bar ${poll.options[option] === highestVote && hasVoted ? 'highest' : ''}" style="width: ${hasVoted ? percentage : 0}%;"></div>
-                        <div class="option-text">${option}${hasVoted ? ` (${votes}, ${percentage.toFixed(1)}%)` : ''}${userVote === option ? ' (You)' : ''}</div>
-                    `;
+            <div class="vote-bar ${votes === highestVote && hasVoted ? 'highest' : ''}" style="width: ${hasVoted ? percentage : 0}%;"></div>
+            <div class="option-text">${option}${hasVoted ? ` (${votes}, ${percentage.toFixed(1)}%)` : ''}${userVote === option && hasVoted ? ' (You)' : ''}</div>
+        `;
                     if (!hasVoted) optionDiv.onclick = () => this.vote(pollId, option, optionsDiv, pollDiv);
                     optionsDiv.appendChild(optionDiv);
                 });
@@ -1038,21 +1093,21 @@
                 const contextMenu = document.createElement('div');
                 contextMenu.className = 'context-menu';
                 contextMenu.innerHTML = `
-                    <button onclick="App.sharePoll('${pollId}', '${poll.question}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                        Share
-                    </button>
-                    ${hasVoted ? `<button onclick="App.unvote('${pollId}', this.closest('.poll'))"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>Unvote</button>` : ''}
-                    ${isMine ? `<button onclick="App.deletePoll('${pollId}', this.closest('.poll'))"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Delete</button>` : ''}
-                    <button onclick="App.bookmarkPoll('${pollId}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                        Bookmark
-                    </button>
-                    <button onclick="App.showReportModal('${pollId}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        Report
-                    </button>
-                `;
+        <button onclick="App.sharePoll('${pollId}', '${poll.question}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+            Share
+        </button>
+        ${hasVoted ? `<button onclick="App.unvote('${pollId}', this.closest('.poll'))"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>Unvote</button>` : ''}
+        ${isMine ? `<button onclick="App.deletePoll('${pollId}', this.closest('.poll'))"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Delete</button>` : ''}
+        <button onclick="App.bookmarkPoll('${pollId}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+            Bookmark
+        </button>
+        <button onclick="App.showReportModal('${pollId}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            Report
+        </button>
+    `;
                 menuBtn.onclick = e => {
                     e.stopPropagation();
                     contextMenu.style.display = contextMenu.style.display === 'block' ? 'none' : 'block';
@@ -1061,7 +1116,8 @@
                 pollDiv.appendChild(menuBtn);
                 pollDiv.appendChild(contextMenu);
                 pollDiv.appendChild(optionsDiv);
-                container.appendChild(pollDiv);
+
+                if (!existingPollDiv) container.appendChild(pollDiv);
             },
 
             updateVotes(options, optionsDiv, hasVoted) {
@@ -1097,12 +1153,32 @@
 
                     const snapshot = await rtdb.ref(`polls/${pollId}`).once('value');
                     const updatedPoll = snapshot.val();
+
+                    // Animate the selected option
+                    const selectedOptionDiv = Array.from(optionsDiv.children).find(div =>
+                        div.querySelector('.option-text').textContent.split(' (')[0] === selectedOption
+                    );
+                    if (selectedOptionDiv) {
+                        selectedOptionDiv.style.transition = 'background 0.3s ease, transform 0.3s ease, opacity 0.3s ease';
+                        selectedOptionDiv.style.background = state.darkMode ? '#fff' : '#000'; // Immediate feedback
+                        selectedOptionDiv.style.color = state.darkMode ? '#000' : '#fff';
+                        selectedOptionDiv.style.transform = 'scale(1.05)';
+                        selectedOptionDiv.style.opacity = '0.9';
+                        setTimeout(() => {
+                            selectedOptionDiv.style.transform = 'scale(1.02)';
+                            selectedOptionDiv.style.opacity = '1';
+                        }, 300); // Smooth settle
+                    }
+
+                    // Update the entire poll after animation
                     pollDiv.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                     pollDiv.style.opacity = '0';
                     pollDiv.style.transform = 'translateY(20px)';
                     setTimeout(() => {
                         pollDiv.innerHTML = '';
-                        this.renderPoll(updatedPoll, pollId, pollDiv.parentElement, true, state.currentUser && updatedPoll.creatorId === state.currentUser.uid);
+                        this.renderPoll(updatedPoll, pollId, pollDiv.parentElement, true, state.currentUser && updatedPoll.creatorId === state.currentUser.uid, pollDiv);
+                        pollDiv.style.opacity = '1';
+                        pollDiv.style.transform = 'translateY(0)';
                     }, 300);
 
                     UI.showToast('Voted! Next in 3s...');
